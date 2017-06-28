@@ -1,5 +1,7 @@
 ﻿from enum import Enum
+from JsonEncoder import Encoder
 import json
+import inspect
 from QiTypeCode import QiTypeCode
 from QiTypeProperty import QiTypeProperty
 
@@ -50,44 +52,9 @@ class QiType(object):
     def Properties(self, properties):
         self.__properties = properties
 
-    #@property
-    #def IsGenericType(self):
-    #    return self.__isGenericType
-    #@IsGenericType.setter
-    #def IsGenericType(self, isGenericType):
-    #    self.__isGenericType = isGenericType
-
-    #@property
-    #def GenericArguments(self):
-    #    return self.__genericArguments
-    #@GenericArguments.setter
-    #def GenericArguments(self, genericArguments):
-    #    self.__genericArguments = genericArguments
-
-    #@property
-    #def IsReferenceType(self):
-    #    return self.__isReferenceType
-    #@IsReferenceType.setter
-    #def IsReferenceType(self, isReferenceType):
-    #    self.__isReferenceType = isReferenceType
-
-    #@property
-    #def DerivedTypes(self):
-    #    return self.__derivedTypes
-    #@DerivedTypes.setter
-    #def DerivedTypes(self, derivedTypes):
-    #    self.__derivedTypes = derivedTypes
-
-    #@property
-    #def ExtensionData(self):
-    #    return self.__extensionData
-    #@ExtensionData.setter
-    #def ExtensionData(self, extensionData):
-    #    self.__extensionData = extensionData
-
-    def toString(self):
+    def toJsonString(self):
         return json.dumps(self.toDictionary())
-    
+
     def toDictionary(self):
         # required properties
         dictionary = { 'QiTypeCode' : self.QiTypeCode.value }
@@ -112,11 +79,10 @@ class QiType(object):
             dictionary['BaseType'] = self.BaseType.toDictionary()
 
         return dictionary
- 
+
     @staticmethod
-    def fromString(content):
-         dictionary = json.loads(content)
-         return QiType.fromDictionary(dictionary)
+    def fromJson(jsonObj):
+        return QiType.fromDictionary(jsonObj)
 
     @staticmethod
     def fromDictionary(content):

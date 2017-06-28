@@ -1,90 +1,111 @@
 import datetime
 import math
+import json
+import inspect
 
 class WaveData:
+    """Represents a data point to be injected into Qi Service"""
     
     def __init__(self):
-        self.__Order = None
-        self.__Tau = None
-        self.__Radians = None
-        self.__Sin = None
-        self.__Cos = None
-        self.__Tan = None
-        self.__Sinh = None
-        self.__Cosh = None
-        self.__Tanh = None
+        self._order = None
+        self._tau = None
+        self._radians = None
+        self._sin = None
+        self._cos = None
+        self._tan = None
+        self._sinh = None
+        self._cosh = None
+        self._tanh = None
     
     @property
     def Order(self):
-        return self.__order
+        return self._order
     @Order.setter
     def Order(self, order):
-        self.__order = order
+        self._order = order
 
     @property
     def Tau(self):
-        return self.__tau
+        return self._tau
     @Tau.setter
     def Tau(self, tau):
-        self.__tau = tau
+        self._tau = tau
     
     @property
     def Radians(self):
-        return self.__radians
+        return self._radians
     @Radians.setter
     def Radians(self, radians):
-        self.__radians = radians
+        self._radians = radians
     
     @property
     def Sin(self):
-        return self.__sin
+        return self._sin
     @Sin.setter
     def Sin(self, sin):
-        self.__sin = sin
+        self._sin = sin
     
     @property
     def Cos(self):
-        return self.__cos
+        return self._cos
     @Cos.setter
     def Cos(self, cos):
-        self.__cos = cos
+        self._cos = cos
 
     @property
     def Tan(self):
-        return self.__tan
+        return self._tan
     @Tan.setter
     def Tan(self, tan):
-        self.__tan = tan
+        self._tan = tan
 
     @property
     def Sinh(self):
-        return self.__sinh
+        return self._sinh
     @Sinh.setter
     def Sinh(self, sinh):
-        self.__sinh = sinh
+        self._sinh = sinh
 
     @property
     def Cosh(self):
-        return self.__cosh
+        return self._cosh
     @Cosh.setter
     def Cosh(self, cosh):
-        self.__cosh = cosh
+        self._cosh = cosh
     
     @property
     def Tanh(self):
-        return self.__tanh
+        return self._tanh
     @Tanh.setter
     def Tanh(self, tanh):
-        self.__tanh = tanh
+        self._tanh = tanh
         
-    def toString(self):
-        return '\n'.join('Order = {0}'.format(self.Order),
-                         'Radians = {0}'.format(self.Radians),
-                         'Tau = {0}'.format(self.Tau),
-                         'Sine = {0}'.format(self.Sin),
-                         'Cosine = {0}'.format(self.Sin),
-                         'Tangent = {0}'.format(self.Tan),
-                         'Sinh = {0}'.format(self.Tan),
-                         'Cosh = {0}'.format(self.Cosh),
-                         'Tanh = {0}'.format(self.Tanh))
-        
+    def isprop(v):
+        return isinstance(v, property)
+
+    def toJsonString(self):
+        string = ""
+        for prop in inspect.getmembers(type(self), lambda v : isinstance(v, property)):
+            value = prop[1].fget(self)
+            if value is None:
+                string += "{name}: , ".format(name = prop[0])
+            else:
+                string += "{name}: {value}, ".format(name = prop[0], value = value)
+        return string
+
+    @staticmethod
+    def fromJson(jsonObj):
+        if jsonObj is None:
+            return None
+        wave = WaveData()
+        properties = inspect.getmembers(type(wave), lambda v : isinstance(v, property))
+        for prop in properties:
+            # Pre-Assign the default
+            prop[1].fset(wave, 0)
+
+            # If found in JSON object, then set
+            if prop[0] in jsonObj:
+                value = jsonObj[prop[0]]
+                if value is not None:
+                    prop[1].fset(wave, value)
+        return wave

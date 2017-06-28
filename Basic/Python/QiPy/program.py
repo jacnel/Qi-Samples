@@ -6,8 +6,9 @@ import math
 
 def printEvents(events):
     print("Total Events found: " + str(len(events)))
-    for i in events:
-        print(i)
+    for e in events:
+        e = WaveData.fromJson(e)
+        print(e)
 
 #returns a type that represents the wave data
 def getWaveDataType(sampleTypeId):
@@ -100,7 +101,6 @@ def nextWave(now, interval, multiplier, order):
 ######################################################################################################
 # The following define the identifiers we'll use throughout
 ######################################################################################################
-sampleNamespaceId = "Samples" #"WaveData_SampleNamespace"
 sampleTypeId = "WaveData_SampleType"
 sampleStreamId = "WaveData_SampleStream"
 sampleBehaviorId = "WaveData_SampleBehavior"
@@ -109,8 +109,9 @@ try:
     config = configparser.ConfigParser()
     config.read('config.ini')
 
-    client = QiClient(config.get('Access', 'Tenant'), config.get('Access', 'Address'), config.get('Credentials', 'Resource'), 
-                      config.get('Credentials', 'AppId'), config.get('Credentials', 'AppKey'))
+    namespace_id = config.get('Configurations', 'Namespace') # namespace is an existing namespace for a given tenant
+    client = QiClient(config.get('Access', 'Tenant'), config.get('Access', 'Address'), config.get('Credentials', 'Resource'),
+                      config.get('Credentials', 'Authority'), config.get('Credentials', 'AppId'), config.get('Credentials', 'AppKey'))
 
     print("----------------------------------")
     print("  ___  _ ____")        
@@ -121,24 +122,19 @@ try:
     print("               |___/ ")	
     print("Version " + str(client.Version))
     print("----------------------------------")
-    print("Qi endpoint at {url}".format(url = client.Uri))
+    print("Qi endpoint at {url}".format(url=client.Uri))
     print()
 
     ######################################################################################################
-    # QiNamespace get or creation
-    ######################################################################################################
-    namespace = QiNamespace()
-    namespace.Id = sampleNamespaceId
-    namespace = client.createNamespace(namespace)
-    
-    ######################################################################################################
-    # QiType get or creation
+    # QiType creation and gets
     ######################################################################################################
     type = getWaveDataType(sampleTypeId)
-    type = client.createType(namespace.Id, type)
+    type = client.createType(namespace_id, type)
+    print(client.getType(namespace_id,type.Id))
+    print(str(client.getTypes(namespace_id)))
 
     ######################################################################################################
-    # Qi Stream creation
+    # Qi Stream creation and gets
     ######################################################################################################
     stream = QiStream()
     stream.Id = sampleStreamId
@@ -146,90 +142,115 @@ try:
     stream.Description = "A Stream to store the WaveData events"
     stream.TypeId = type.Id
     stream.BehaviorId = None
-    stream = client.createStream(namespace.Id, stream)
+    stream = client.createStream(namespace_id, stream)
+    print(client.getStream(namespace_id, sampleStreamId).toJsonString())
+    print(str(client.getStreams(namespace_id, "")))
 
     ######################################################################################################
     # CRUD operations for events
     ######################################################################################################
-
     start = datetime.datetime.now()
     span = datetime.datetime.strptime("0:1:0", "%H:%M:%S")
 
     # Insert a single event
     event = nextWave(start, span, 2.0, 0)
-    client.insertValue(namespace.Id, stream.Id, event)
+    client.insertValue(namespace_id, stream.Id, event)
 
     # Insert a list of events
     events = []
     for i in range(2, 20, 2):
-        event = nextWave(start + datetime.timedelta(seconds = i * 0.2), span, 2.0, i)
+        event = nextWave(start + datetime.timedelta(seconds=(i * 0.2)), span, 2.0, i)
         events.append(event)
-    client.insertValues(namespace.Id, stream.Id, events)
+    client.insertValues(namespace_id, stream.Id, events)
 
     # Get the last inserted event in a stream
-    print("Latest event is:")
-    print(client.getLastValue(namespace.Id, stream.Id))
-    print()
+    event = client.getLastValue(namespace_id, stream.Id, WaveData)
+    print("Latest value:")
+    print(event)
+
+    # Get value with index = 4
+    event = client.getValue(namespace_id, stream.Id, WaveData, 4)
+    print("Value with index = 4:")
+    print(event)
 
     # Get all the events
+    events = client.getWindowValues(namespace_id, stream.Id, WaveData, 0, 198)
     print("All events:")
-    events = client.getWindowValues(namespace.Id, stream.Id, 0, 198)
-    printEvents(events)
-    print()
+    for e in events:
+        print(e.toJsonString())
 
     # Update the first event
     event = nextWave(start, span, 4.0, 0)
-    client.updateValue(namespace.Id, stream.Id, event)
+    client.updateValue(namespace_id, stream.Id, event)
 
     # Update the rest of the events
     updatedEvents = []
     for i in range(2, 200, 2):
-        event = nextWave(start + datetime.timedelta(seconds = i * 0.2), span, 2.0, i)
+        event = nextWave(start + datetime.timedelta(seconds=i * 0.2), span, 2.0, i)
         updatedEvents.append(event)
-    client.updateValues(namespace.Id, stream.Id, updatedEvents)
+    client.updateValues(namespace_id, stream.Id, updatedEvents)
+
+    # Replace the first event
+    event = nextWave(start, span, 10.0, 0)
+    client.replaceValue(namespace_id, stream.Id, event)
+
+    # Replace the rest of the events
+    replacedEvents = []
+    for i in range(2, 200, 2):
+        event = nextWave(start + datetime.timedelta(seconds=i * 0.2), span, 10.0, i)
+        replacedEvents.append(event)
+    client.replaceValues(namespace_id, stream.Id, replacedEvents)
 
     ######################################################################################################
     # Stream behavior
     ######################################################################################################
-
-    # Stream behaviors modify retrieval.  We will retrieve three events using the default behavior, Continuous
-    events = client.getRangeValues(namespace.Id, stream.Id, "1", 0, 3, False, QiBoundaryType.ExactOrCalculated)
-    print("Default (Continuous) stream behavior")
+    # Stream behaviors modify retrieval.  Retrieves three events using the default behavior, Continuous
+    print("Retrieving values with no behavior specified")
+    events = client.getRangeValues(namespace_id, stream.Id, WaveData, "1", 0, 3, False, QiBoundaryType.ExactOrCalculated)
     for e in events:
-        print(("{order}: {radians}".format(order = e['Order'], radians = e['Radians'])))
+        print(e.toJsonString())
 
     # Create a Discrete stream behavior 
     discreteBehavior = QiStreamBehavior()
     discreteBehavior.Id = sampleBehaviorId
     discreteBehavior.Mode = QiStreamMode.Discrete
-    discreteBehavior = client.createBehavior(namespace.Id, discreteBehavior)
+    discreteBehavior = client.createBehavior(namespace_id, discreteBehavior)
 
+    # Get a behavior by ID
+    print(client.getBehavior(namespace_id, discreteBehavior.Id))
+
+    # Get multiple behaviors
+    print(str(client.getBehaviors(namespace_id, 0, 100)))
+
+    # Update the stream with behavior
     stream.BehaviorId = discreteBehavior.Id
-    client.updateStream(namespace.Id, stream)
+    client.updateStream(namespace_id, stream)
 
-    events = client.getRangeValues(namespace.Id, stream.Id, "1", 0, 3, False, QiBoundaryType.ExactOrCalculated)
+    # Retrieve events with modified stream
+    events = client.getRangeValues(namespace_id, stream.Id, WaveData, "1", 0, 3, False, QiBoundaryType.ExactOrCalculated)
     print("Discrete stream behavior")
     for e in events:
-        print(("{order}: {radians}".format(order = e['Order'], radians = e['Radians'])))
+        print(e.toJsonString())
 
     ######################################################################################################
     # Delete events
     ######################################################################################################
+    print("Deleting values")
+    # Delete single event
+    client.removeValue(namespace_id, stream.Id, 0)
 
-    #delete single event
-    client.removeValue(namespace.Id, stream.Id, 0)
+    # Delete rest of the events
+    client.removeWindowValues(namespace_id, stream.Id, 0, 200)
 
-    #delete rest of the events
-    client.removeWindowValues(namespace.Id, stream.Id, 0, 200)
-
-    event = client.getLastValue(namespace.Id, stream.Id)
+    # Attempt to retrieve the last value, fail if found
+    event = client.getLastValue(namespace_id, stream.Id, WaveData)
     if event != None:
         raise ValueError
 
-    print("completed successfully!")
+    print("Completed successfully!")
 
 except Exception as i:
-    print(("Encountered Error: {error}".format(error = i)))
+    print(("Encountered Error: {error}".format(error=i)))
     print()
 
 finally:
@@ -238,14 +259,8 @@ finally:
     ######################################################################################################
 
     # Clean up the remaining artifacts
+    supressError(lambda: client.deleteStream(namespace_id, sampleStreamId))
+    supressError(lambda: client.deleteType(namespace_id, sampleTypeId))
+    supressError(lambda: client.deleteBehavior(namespace_id, sampleBehaviorId))
 
-    print("Deleting the stream")
-    supressError(lambda: client.deleteStream(namespace.Id, sampleStreamId))
-
-    print("Deleting the type")
-    supressError(lambda: client.deleteType(namespace.Id, sampleTypeId))
-
-    print("Deleting the behavior")
-    supressError(lambda: client.deleteBehavior(namespace.Id, sampleBehaviorId))
-
-print("done")
+print("Done")
