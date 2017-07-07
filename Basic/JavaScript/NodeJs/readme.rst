@@ -20,9 +20,9 @@ Sample Setup
 
        npm install request-promise
 
-1. Open Command Prompt in Windows
-2. Goto folder where js files are located
-3. Type the following command to run the test file in the local server
+4. Open Command Prompt in Windows
+5. Goto folder where js files are located
+6. Type the following command to run the test file in the local server
 
    .. code:: javascript
 
@@ -89,46 +89,57 @@ achieve an ``await()`` effect. It supports all the features as that of
 the ``request`` library, except that callbacks are replaced with
 promises.
 
+Configure the Sample:
+-----------------------
+
+Included in the sample there is a configuration file with placeholders 
+that need to be replaced with the proper values. They include information 
+for authentication, connecting to the Qi Service, and pointing to a namespace.
+
+The Qi Service is secured using Azure Active Directory. The sample application 
+is an example of a *confidential client*. Confidential clients provide a 
+application ID and secret that are authenticated against the directory. These 
+are referred to as client IDs and a client secrets, which are associated with 
+a given tenant. They are created through the tenant's administration portal. 
+The steps necessary to create a new cient ID and secret are described below.
+
+First, log on to the `Cloud Portal <http://cloud.osisoft.com>`__ with admin 
+credentials and navigate to the ``Client Keys`` page under the ``Manage`` tab,
+which is situated along the top of the webpage. Two types of keys may be created. 
+For a complete explanation of key roles look at the help bar on the right side of 
+the page. This sample program covers data creation, deletion and retrieval, so an 
+administration key must be used in the configuration file. Creating a new key is 
+simple. Enter a name for the key, select ``Administrator role``, then click ``Add Key``.
+
+Next, view the key by clicking the small eye icon on the right of the created key, 
+located in the list of available keys. A pop-up will appear with the tenant ID, client 
+ID and client secret. These must replace the corresponding  values in the sample's 
+configuration file. 
+
+Along with client ID and secret values, add the tenant name to the authority value 
+so authenticaiton occurs against the correct tenant. The URL for the Qi Service 
+conneciton must also be changed to reflect the destination address of the requests. 
+
+Finally, a valid namespace ID for the tenant must be given as well. To create a 
+namespace, click on the ``Manage`` tab then navigate to the ``Namespaces`` page. 
+At the top the add button will create a new namespace after the required forms are 
+completed. This namespace is now associated with the logged-in tenant and may be 
+used in the sample.
+
+The values to be replaced are in ``config.js``:
+
+.. code:: javascript
+
+        authItems : {'resource' : "https://pihomemain.onmicrosoft.com/historian",
+                         'authority' : "PLACEHOLDER_REPLACE_WITH_AUTHORITY", //Ex: "https://login.windows.net/<TENANT-ID>.onmicrosoft.com/oauth2/token",
+                         'clientId' : "PLACEHOLDER_REPLACE_WITH_USER_ID",
+                         'clientSecret' : "PLACEHOLDER_REPLACE_WITH_USER_SECRET"}
+        qiServerUrl : "PLACEHOLDER_REPLACE_WITH_QI_SERVER_URL",
+		tenantId: "PLACEHOLDER_REPLACE_WITH_TENANT_ID",
+		namespaceId: "PLACEHOLDER_REPLACE_WITH_NAMESPACE_ID"
+
 Obtain an Authentication Token
 ------------------------------
-
-The Qi service is secured by obtaining tokens from an Azure Active
-Directory instance. A token must be attached to every request made to
-Qi, in order for the request to succeed. The sample applications are
-examples of a *confidential client*. Such clients provide a user Id and
-secret that are authenticated against the directory. The sample code
-includes several placeholder strings. You must replace these with the
-authentication-related values you received from OSIsoft. The strings are
-found in ``Constants.js``:
-
-.. code:: javascript
-
-        authItems : {'resource' : "PLACEHOLDER_REPLACE_WITH_RESOURCE",
-                         'authority' : "PLACEHOLDER_REPLACE_WITH_AUTHORITY",//Ex: "https://login.windows.net/<TENANT-ID>.onmicrosoft.com/oauth2/token",
-                         'appId' : "PLACEHOLDER_REPLACE_WITH_USER_ID",
-                         'appKey' : "PLACEHOLDER_REPLACE_WITH_USER_SECRET"}
-        qiServerUrl : "PLACEHOLDER_REPLACE_WITH_QI_SERVER_URL";
-
-You will need to replace ``resource``, ``authority``, ``appId``, and
-``appKey``. The ``authItems`` array is passed to the ``QiClient``
-constructor. The following ``POST`` method us used to fetch the
-authentication token.
-
-.. code:: javascript
-
-    restCall({
-                url : AUTHORITY-URL,
-                method: 'POST',
-                headers : {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                form : {'resource' : "RESOURCE-URL",
-                         'authority' : "https://login.windows.net/AUTHORIZATION-URL/oauth2/token",
-                         'appId' : "CLIENT-ID",
-                         'appKey' : "CLIENT-SECRET"}
-            });
-
-The credentials are passed as form-encoded content.
 
 This javascript example uses raw OAuth 2 calls to obtain an
 authentication token. Microsoft also provides a Azure Active Directory
@@ -136,11 +147,11 @@ Authentication Library for javascript that can be used with angular.js,
 which handles the specifics of token acquisition, caching, and refresh.
 
 During initialization, ``QiClient`` sets the QiServerUrl. Then, the
-first step is to get authentication token by calling,
+first step is to get an authentication token by calling,
 
 .. code:: javascript
 
-    this.getToken()
+    this.getToken(authItems)
 
 The token received from ``getToken`` is included in the headers of each
 Qi REST API request:
@@ -165,17 +176,16 @@ angular.js that handles token caching and refresh transparently.
 
 .. code:: javascript
 
-    if(client.tokenExpires < nowSeconds){
-                                        return checkTokenExpired(client).then(
-                                                                function(res){
-                                                                    refreshToken(res, client);
-                                                                    return client.createType(wave);
-                                                                }).catch(function(err){logError(err)});
-                                    }else{
-                                        return client.createType(wave);
-                                    }
+    if (client.tokenExpires < nowSeconds) {
+                return checkTokenExpired(client)
+				.then(
+                    function (res) {
+                        refreshToken(res, client);
+                        return client.createType(tenantId, sampleNamespaceId, sampleType);
+                    })
+				.catch(function (err) { logError(err); });
 
-Note: The ``getToken()`` method returns a request-promise object, which
+Note: The ``checkTokenExpired`` method returns a request-promise object, which
 can have a ``.then()`` and a ``.catch()`` method associated with it. The
 ``.then()`` method is executed when the request-promise is resolved (or
 successful) and ``.catch()`` is executed if an exception or error is
@@ -189,7 +199,7 @@ calls):
                                         .catch(function(err){logError(err)});
     var createTypeSuccess = getTokenSuccess.then(...<Qi REST call to create a type>...)
 
-In the above snippet, the type creation method be called only if token
+In the above snippet, the type creation method is called only if token
 acquisition was successful. This is not mandatory for interaction with
 the Qi service - the type creation call could be attempted regardless of
 token acquisition. A call to the Qi service with a missing or incorrect
@@ -217,7 +227,7 @@ The type "Id" is the identifier for a particular type. "Name" and
 file *QiObjects.js* enumerates the available datatypes the
 qiTypeCodeMap.
 
-A type definition in Qi consists of one or more "Properties." Each
+A type definition in Qi consists of one or more "Properties". Each
 property has its own type. This can be a simple data type like integer
 or string, or a previously defined complex QiType. This allows for the
 creation of nested data types - QiTypes whose properties may be
@@ -250,7 +260,7 @@ A QiType can be created by a POST request as follows:
 .. code:: javascript
 
         restCall({
-                    url : this.url+this.typesBase,
+                    url : this.url+this.typesBase.format([tenantId, namespaceId]),
                     method: 'POST',
                     headers : this.getHeaders(),
                     body : JSON.stringify(wave).toString()
@@ -288,7 +298,7 @@ follows:
 .. code:: javascript
 
     restCall({
-            url : this.url+this.streamsBase,
+            url : this.url+this.streamsBase.format([tenantId, namespaceId]),
             method : 'POST',
             headers : this.getHeaders(),
             body : JSON.stringify(qiStream).toString()
@@ -308,8 +318,8 @@ An event can be created using the following POST request:
 .. code:: javascript
 
     restCall({
-                url : this.url+this.streamsBase+"/"+
-                        qiStream.Id+this.insertSingle,
+                url : this.url+this.streamsBase.format([tenantId, namespaceId])+"/"+
+                        qiStream.Id+this.insertSingleValueBase,
                 method : 'POST',
                 headers : this.getHeaders(),
                 body : JSON.stringify(evt)
@@ -325,33 +335,35 @@ and the url for POST call varies:
 
     restCall({
                 url : this.url+this.streamsBase+"/"+
-                        qiStream.Id+this.insertMultiple,
+                        qiStream.Id+this.insertMultipleValuesBase,
                 method : 'POST',
                 headers : this.getHeaders(),
                 body : JSON.stringify(events)
             });
 
 The Qi REST API provides many more types of data insertion calls beyond
-those demonstrated in this application.
+those demonstrated in this application. Go to the 
+`Qi documentation<https://cloud.osisoft.com/documentation>`_ for more information
+on available REST API calls.
 
-Retrieve Events
+Retrieve Values
 ---------------
 
 There are many methods in the Qi REST API allowing for the retrieval of
 events from a stream. The retrieval methods take string type start and
 end values; in our case, these the start and end ordinal indices
-expressed as strings ("0" and "99", respectively). The index values must
+expressed as strings ("0" and "198", respectively). The index values must
 capable of conversion to the type of the index assigned in the QiType.
 Timestamp keys are expressed as ISO 8601 format strings. Compound
 indices are values concatenated with a pipe ('\|') separator. This
 sample implements only two of the many available retrieval methods -
-GetWindowValues (getTemplate in ``QiClient.js``) and GetRangeValues
+getWindowValues (getTemplate in ``QiClient.js``) and getRangeValues
 (``getRangeTemplate`` in ``QiClient.js``).
 
 .. code:: javascript
 
     restCall({
-            url : this.url+this.streamsBase+this.getTemplate.format([qiStream.Id,start,end]),
+            url : this.url+this.streamsBase+this.getSingleValueBase.format([qiStream.Id,start,end]),
             method : 'GET',
             headers : this.getHeaders()
         });
@@ -370,7 +382,7 @@ Updating events is handled by PUT REST call as follows:
 
      restCall({
                 url : this.url+this.streamsBase+"/"+
-                        qiStream.Id+this.updateSingle,
+                        qiStream.Id+this.updateSingleValueBase,
                 method : 'PUT',
                 headers : this.getHeaders(),
                 body : JSON.stringify(evt)
@@ -386,7 +398,7 @@ event objects and url for PUT is slightly different:
 
      restCall({
                 url : this.url+this.streamsBase+"/"+
-                        qiStream.Id+this.updateMultiple,
+                        qiStream.Id+this.updateMultipleValuesBase,
                 method : 'PUT',
                 headers : this.getHeaders(),
                 body : JSON.stringify(events)
@@ -396,7 +408,7 @@ QiStreamBehaviors
 -----------------
 
 With certain data retrieval calls, a QiBoundarytype may be specified.
-For example, if GetRangeValues is called with an ExactOrCalculated
+For example, if getRangeValues is called with an ExactOrCalculated
 boundary type, an event at the request start index will be calculated
 using linear interpolation (default) or based on the QiStreamBehavior
 associated with the QiStream. Because our sample QiStream was created
@@ -408,22 +420,24 @@ index) and calculated via linear interpolation:
 
 .. code:: javascript
 
-      client.getRangeValues(stream, 1, 0, 3, False, qiObjs.qiBoundaryType.ExactOrCalculated);
+      client.getRangeValues(tenantId, sampleNamespaceId, sampleStreamId, "1", 0, 3, "False", qiObjs.qiBoundaryType.ExactOrCalculated)
 
 To observe how QiStreamBehaviors can change the query results, we will
 define a new stream behavior object and submit it to the Qi service::
 
 .. code:: javascript
 
-        var behavior = new qiObjs.QiBehavior({"Mode":qiObjs.qiStreamMode.Continuous});
+        var behavior = new qiObjs.QiBehavior({"Mode": qiObjs.qiStreamMode.StepWiseContinuousLeading;});
         behavior.Id = "evtStreamStepLeading";
-        behavior.Mode = qiObjs.qiStreamMode.StepWiseContinuousLeading;
+		sampleBehavior.ExtrapolationMode = qiObjs.qiBoundaryType.Continuous;
         ...
         client.createBehavior(behavior);
 
 By setting the ``Mode`` property to ``StepwiseContinuousLeading`` we
 ensure that any calculated event will have an interpolated index, but
-every other property will have the value of the previous event. Now
+every other property will have the value of the previous event. Setting
+the extrapolation mode defines how the stream responds to requests for
+and index that proceeds or follows all of the data in the stream. Finally,
 attach this behavior to the existing stream by setting the
 ``BehaviorId`` property of the stream and updating the stream definition
 in the Qi service:
@@ -449,7 +463,7 @@ index values must be expressed as ISO 8601 strings.
 .. code:: javascript
 
     restCall({
-                url : this.url+this.streamsBase+this.removeSingleTemplate.format([qiStream.Id, index]),
+                url : this.url+this.streamsBase+this.removeSingleValueBase.format([qiStream.Id, index]),
                 method : 'DELETE',
                 headers : this.getHeaders()
             });
@@ -463,7 +477,7 @@ Delete can also be performed over a window of key value as follows:
 .. code:: javascript
 
      restCall({
-                url : this.url+this.streamsBase+this.removeMultipleTemplate.format([qiStream.Id, start, end]),
+                url : this.url+this.streamsBase+this.removeMultipleValuesBase.format([qiStream.Id, start, end]),
                 method : 'DELETE',
                 headers : this.getHeaders()
             });
