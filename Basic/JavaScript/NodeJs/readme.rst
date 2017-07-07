@@ -26,7 +26,7 @@ Sample Setup
 
    .. code:: javascript
 
-       node QiTest.js
+       node Program.js
 
 7. Now open a browser client and enter the following URL to trigger the
    Qi operations ``http://localhost:8080/``
