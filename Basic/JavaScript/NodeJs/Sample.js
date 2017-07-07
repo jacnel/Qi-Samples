@@ -37,7 +37,6 @@ var logError = function (err) {
         console.log("Qi Object already present in the Service\n");
     }
     else {
-        console.log("An error occured!\n" + err);
         throw err;
     }
 };
@@ -424,7 +423,7 @@ http.createServer(function (request1, response) {
     var testFinished = deleteWindowEvents.then(function (res) {
         console.log("Multiple events deletion successful");
         console.log("\n------Test successful!------");
-    }).catch(function (err) { console.log(err.message); });
+    }).catch(function (err) { logError(err) });
 
     // cleanup of namespace 
     var cleanup = testFinished
@@ -432,6 +431,7 @@ http.createServer(function (request1, response) {
         // delete the stream
         function () {
             console.log("Cleaning up...");
+			console.log("Deleting stream");
             if (client.tokenExpires < nowSeconds) {
                 return checkTokenExpired(client).then(
                     function (res) {
@@ -445,7 +445,7 @@ http.createServer(function (request1, response) {
         .finally(
         // delete the type
         function () {
-            console.log("Stream deletion successful");
+            console.log("Deleting type");
             if (client.tokenExpires < nowSeconds) {
                 return checkTokenExpired(client).then(
                     function (res) {
@@ -459,7 +459,7 @@ http.createServer(function (request1, response) {
         .finally(
         // delete the behavior
         function () {
-            console.log("Type deletion successful");
+            console.log("Deleting behavior");
             if (client.tokenExpires < nowSeconds) {
                 return checkTokenExpired(client).then(
                     function (res) {
@@ -478,7 +478,7 @@ http.createServer(function (request1, response) {
         .catch(
         // log the call that failed
         function (err) {
-            console.log(err.options.method + " request to " + err.options.url + " failed.");
+            console.log("An error occured!\n" + err);
         });
 
     response.end();
