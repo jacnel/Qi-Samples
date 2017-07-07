@@ -1,8 +1,8 @@
-#Welcome
+# Welcome
 
 The Qi Client samples are introductory, language-specific examples of programming against the Qi storage service.  They are intended as instructional samples only.  
 
-#Sample Pattern
+# Sample Pattern
 
 All basic samples are console applications that follow the same sequence of events, allowing you to select the langauge with which you are most comfortable without missing any instructional features.  The pattern followed is:
 
